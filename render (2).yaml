@@ -1,0 +1,26 @@
+services:
+  - type: worker
+    name: telegram-iptv-streamer
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: USER_SESSION
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: GROUP_ID
+        value: ""
+      - key: XTREAM_SERVER
+        sync: false
+      - key: XTREAM_USERNAME
+        sync: false
+      - key: XTREAM_PASSWORD
+        sync: false

@@ -1,0 +1,10 @@
+API_ID=123456
+API_HASH=your_api_hash
+BOT_TOKEN=123456:your_bot_token
+USER_SESSION=your_own_telegram_string_session
+OWNER_ID=123456789
+GROUP_ID=-1001234567890
+XTREAM_SERVER=https://your-provider.example:port
+XTREAM_USERNAME=your_iptv_username
+XTREAM_PASSWORD=your_iptv_password
+LOG_LEVEL=INFO
