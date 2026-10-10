@@ -25,7 +25,7 @@ DEFAULT_GROUP_ID = os.getenv("GROUP_ID", "").strip()
 
 bot = TelegramClient("control_bot", API_ID, API_HASH)
 user = TelegramClient(StringSession(USER_SESSION), API_ID, API_HASH)
-calls = PyTgCalls(user)
+calls = None
 
 state = {
     "group_id": int(DEFAULT_GROUP_ID) if DEFAULT_GROUP_ID else None,
@@ -140,18 +140,18 @@ async def start_selected_stream(event):
 
 def help_text():
     return (
-        "📡 **IPTV Group-Call Streamer**\\n\\n"
-        "**IPTV setup (private chat only):**\\n"
-        "`/setiptv https://provider.example username password`\\n"
-        "`/iptvstatus` — show whether IPTV login is configured\\n"
-        "`/categories` — list live-TV categories\\n"
-        "`/channels` — list first channels across all categories\\n"
-        "`/channels CATEGORY_ID` — list channels in a category\\n"
-        "`/search channel name` — search channel list\\n"
-        "`/select STREAM_ID` — choose a channel\\n\\n"
-        "**Telegram streaming:**\\n"
-        "`/setgroup -1001234567890`\\n"
-        "`/startstream` · `/stopstream` · `/restartstream` · `/status`\\n\\n"
+        "📡 **IPTV Group-Call Streamer**\n\n"
+        "**IPTV setup (private chat only):**\n"
+        "`/setiptv https://provider.example username password`\n"
+        "`/iptvstatus` — show whether IPTV login is configured\n"
+        "`/categories` — list live-TV categories\n"
+        "`/channels` — list first channels across all categories\n"
+        "`/channels CATEGORY_ID` — list channels in a category\n"
+        "`/search channel name` — search channel list\n"
+        "`/select STREAM_ID` — choose a channel\n\n"
+        "**Telegram streaming:**\n"
+        "`/setgroup -1001234567890`\n"
+        "`/startstream` · `/stopstream` · `/restartstream` · `/status`\n\n"
         "Use only content you are authorized to stream. Credentials are held in memory unless "
         "configured as Render environment variables."
     )
@@ -178,7 +178,7 @@ async def setiptv_command(event):
     if not match:
         await bot.send_message(
             event.chat_id,
-            "Usage: `/setiptv https://provider.example username password`\\n"
+            "Usage: `/setiptv https://provider.example username password`\n"
             "Send this only in a private chat with your bot. The command message is deleted when possible.",
         )
         return
@@ -227,7 +227,7 @@ async def categories_command(event):
             lines.append(f"• `{item.get('category_id', '?')}` — {safe_channel_name(item.get('category_name'))}")
         if len(categories) > 80:
             lines.append(f"…and {len(categories) - 80} more. Use the provider category IDs.")
-        await event.reply("\\n".join(lines))
+        await event.reply("\n".join(lines))
     except Exception as exc:
         log.warning("Category fetch failed: %s", type(exc).__name__)
         await event.reply(f"Could not fetch categories: `{type(exc).__name__}`. Check credentials and provider API access.")
@@ -250,7 +250,7 @@ async def channels_command(event):
             lines.append(f"• `{channel.get('stream_id')}` — {safe_channel_name(channel.get('name'))}")
         if len(channels) > 60:
             lines.append(f"…and {len(channels) - 60} more. Use `/search name` or a category.")
-        await event.reply("\\n".join(lines))
+        await event.reply("\n".join(lines))
     except Exception as exc:
         log.warning("Channel fetch failed: %s", type(exc).__name__)
         await event.reply(f"Could not fetch channels: `{type(exc).__name__}`. Check credentials and provider API access.")
@@ -273,7 +273,7 @@ async def search_command(event):
             lines.append(f"• `{channel.get('stream_id')}` — {safe_channel_name(channel.get('name'))}")
         if len(found) > 60:
             lines.append(f"…{len(found) - 60} more matches.")
-        await event.reply("\\n".join(lines))
+        await event.reply("\n".join(lines))
     except Exception as exc:
         log.warning("Search failed: %s", type(exc).__name__)
         await event.reply(f"Search failed: `{type(exc).__name__}`.")
@@ -300,8 +300,8 @@ async def select_command(event):
     state["selected_channel_name"] = safe_channel_name(channel.get("name"))
     state["stream_url"] = make_stream_url(stream_id, extension)
     await event.reply(
-        f"Selected **{state['selected_channel_name']}** (ID `{stream_id}`).\\n"
-        f"Playback extension: `{extension}`.\\n"
+        f"Selected **{state['selected_channel_name']}** (ID `{stream_id}`).\n"
+        f"Playback extension: `{extension}`.\n"
         "Use `/startstream` to broadcast. If your provider requires a different format, try "
         "`/select STREAM_ID m3u8`."
     )
@@ -375,23 +375,31 @@ async def status_command(event):
         return
     source_name = state["selected_channel_name"] or "Not selected"
     await event.reply(
-        "**Streamer status**\\n"
-        f"• Group: `{state['group_id'] or 'Not set'}`\\n"
-        f"• Channel: `{source_name}`\\n"
-        f"• Stream ID: `{state['selected_stream_id'] or 'Not set'}`\\n"
-        f"• Playback flag: `{'running' if state['running'] else 'stopped'}`\\n"
+        "**Streamer status**\n"
+        f"• Group: `{state['group_id'] or 'Not set'}`\n"
+        f"• Channel: `{source_name}`\n"
+        f"• Stream ID: `{state['selected_stream_id'] or 'Not set'}`\n"
+        f"• Playback flag: `{'running' if state['running'] else 'stopped'}`\n"
         "The playback flag is process state, not an independent media-health check."
     )
 
 
 async def main():
+    global calls
+
+    # Initialize PyTgCalls inside the same asyncio event loop used by Telethon.
+    calls = PyTgCalls(user)
+
     await user.start()
     me = await user.get_me()
     log.info("Authenticated user session as user_id=%s", me.id)
+
     await bot.start(bot_token=BOT_TOKEN)
     await calls.start()
+
     log.info("Bot and PyTgCalls started")
     print("Bot is running. Send /start privately from the configured OWNER_ID account.")
+
     await bot.run_until_disconnected()
 
 
